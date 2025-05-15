@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AST Visualization</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://unpkg.com/@hpcc-js/wasm@0.3.11/dist/index.min.js"></script>
+    <script src="https://unpkg.com/d3-graphviz@3.0.5/build/d3-graphviz.js"></script>
+</head>
+<body>
+    <div id="graph" style="text-align: center;"></div>
+    <script>
+        d3.select("#graph").graphviz()
+            .renderDot('digraph AST {
+    node [fontname="Arial"];
+    edge [fontname="Arial"];
+    rankdir=TB;
+    node0 [label="FUNCTION_DEF\nmain", shape=box, style=filled, fillcolor="orange"];
+    node1 [label="BINARY_EXPR\n+", shape=box, style=filled, fillcolor="pink"];
+    node2 [label="INT\n1", shape=box, style=filled, fillcolor="lightblue"];
+    node1 -> node2;
+    node3 [label="INT\n2", shape=box, style=filled, fillcolor="lightblue"];
+    node1 -> node3;
+    node0 -> node1;
+}
+');
+    </script>
+</body>
+</html>
