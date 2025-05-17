@@ -75,7 +75,4 @@ void free_ast(ASTNode* node);
 
 void print_ast(ASTNode* node, FILE* output, int indent);
 
-// Utility functions
-const char* get_node_type_str(NodeType type);
-
 #endif

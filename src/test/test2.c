@@ -10,14 +10,12 @@ int main() {
         printf("This will never be printed.\n");
     }
 
-    if(1){
-        printf("This will always be printed.\n");
-    }
+    
   
     int d = a + 2 * 4;    
 
     for (int i = 0; i < 3; i++) {
-        printf("Hello Kunal\n");
+        printf("Hello\n");
     }
     
 

@@ -4,99 +4,114 @@
 
 %{
 #include <stdio.h>
-#include <stdlib.h>
 #include "ast.h"
 
 extern int yylex();
-extern int yyparse();
-extern FILE* yyin;
-void yyerror(const char* s);
+void yyerror(const char* s) { fprintf(stderr, "Parse error: %s\n", s); }
 
-ASTNode* ast_root = NULL;
+ASTNode* ast_root;
 %}
 
 %union {
     int ival;
-    char* sval;
-    struct ASTNode* node;
+    char* str;
+    ASTNode* node;
 }
 
 %token <ival> NUMBER
-%token <sval> IDENTIFIER
-%token INT IF ELSE FOR RETURN
-%token PLUS MINUS TIMES DIVIDE
-%token ASSIGN PLUS_ASSIGN MINUS_ASSIGN
-%token EQ NEQ LT LE GT GE
-%token LPAREN RPAREN LBRACE RBRACE SEMICOLON COMMA
+%token <str> IDENTIFIER
+%token <str> STRING
 
-%type <node> program function_def statement statement_list expression
-%type <node> declaration assignment for_statement if_statement return_statement
+%token KW_INT KW_IF KW_FOR KW_RETURN
+%token LPAREN RPAREN LBRACE RBRACE SEMICOLON ASSIGN COMMA
+%token PLUS MINUS MUL DIV LT
+%token INCR DECR
 
-%%
+%type <node> stmt stmt_list compound_stmt expr expr_list decl_stmt
+               if_stmt for_stmt return_stmt function type program for_init
 
-program
-    : function_def { ast_root = $1; }
-    ;
+%left LT
+%left PLUS MINUS
+%left MUL DIV
 
-function_def
-    : INT IDENTIFIER LPAREN RPAREN LBRACE statement_list RBRACE
-        { $$ = make_function_node($2, $6); free($2); }
-    ;
-
-statement_list
-    : statement { $$ = $1; }
-    | statement_list statement { $$ = make_seq_node($1, $2); }
-    ;
-
-statement
-    : declaration SEMICOLON { $$ = $1; }
-    | assignment SEMICOLON { $$ = $1; }
-    | if_statement { $$ = $1; }
-    | for_statement { $$ = $1; }
-    | return_statement SEMICOLON { $$ = $1; }
-    ;
-
-declaration
-    : INT IDENTIFIER ASSIGN expression
-        { $$ = make_decl_node($2, $4); free($2); }
-    ;
-
-assignment
-    : IDENTIFIER ASSIGN expression
-        { $$ = make_binop_node('=', make_var_node($1), $3); free($1); }
-    | IDENTIFIER PLUS_ASSIGN expression
-        { $$ = make_binop_node('=', make_var_node($1),
-                              make_binop_node('+', make_var_node($1), $3)); free($1); }
-    ;
-
-if_statement
-    : IF LPAREN expression RPAREN LBRACE statement_list RBRACE
-        { $$ = make_if_node($3, $6); }
-    ;
-
-for_statement
-    : FOR LPAREN declaration SEMICOLON expression SEMICOLON assignment RPAREN LBRACE statement_list RBRACE
-        { $$ = make_for_node($3, $5, $7, $10); }
-    ;
-
-return_statement
-    : RETURN expression
-        { $$ = make_return_node($2); }
-    ;
-
-expression
-    : NUMBER { $$ = make_int_node($1); }
-    | IDENTIFIER { $$ = make_var_node($1); free($1); }
-    | expression PLUS expression { $$ = make_binop_node('+', $1, $3); }
-    | expression MINUS expression { $$ = make_binop_node('-', $1, $3); }
-    | expression TIMES expression { $$ = make_binop_node('*', $1, $3); }
-    | expression DIVIDE expression { $$ = make_binop_node('/', $1, $3); }
-    | LPAREN expression RPAREN { $$ = $2; }
-    ;
+%start program
 
 %%
 
-void yyerror(const char* s) {
-    fprintf(stderr, "Parser error: %s\n", s);
-    exit(1);
-}
+program:
+      function                          { ast_root = $1; }
+    ;
+
+function:
+      type IDENTIFIER LPAREN RPAREN compound_stmt
+                                        { $$ = make_function_node($2, $5); }
+    ;
+
+type:
+      KW_INT                            { $$ = make_type_node("int"); }
+    ;
+
+stmt_list:
+      stmt                              { $$ = $1; }
+    | stmt_list stmt                    { $$ = make_seq_node($1, $2); }
+    ;
+
+compound_stmt:
+      LBRACE stmt_list RBRACE           { $$ = $2; }
+    ;
+
+stmt:
+      decl_stmt                         { $$ = $1; }
+    | expr SEMICOLON                    { $$ = $1; }
+    | if_stmt                           { $$ = $1; }
+    | for_stmt                          { $$ = $1; }
+    | return_stmt                       { $$ = $1; }
+    ;
+
+decl_stmt:
+      KW_INT IDENTIFIER ASSIGN expr SEMICOLON
+                                        { $$ = make_decl_node($2, $4); }
+    | KW_INT IDENTIFIER SEMICOLON       { $$ = make_decl_node($2, NULL); }
+    ;
+
+if_stmt:
+      KW_IF LPAREN expr RPAREN compound_stmt
+                                        { $$ = make_if_node($3, $5); }
+    ;
+
+for_init:
+      KW_INT IDENTIFIER ASSIGN expr     { $$ = make_decl_node($2, $4); }
+    | KW_INT IDENTIFIER                 { $$ = make_decl_node($2, NULL); }
+    | expr                              { $$ = $1; }
+    | /* empty */                       { $$ = NULL; }
+    ;
+
+for_stmt:
+      KW_FOR LPAREN for_init SEMICOLON expr SEMICOLON expr RPAREN compound_stmt
+                                        { $$ = make_for_node($3, $5, $7, $9); }
+    ;
+
+return_stmt:
+      KW_RETURN expr SEMICOLON          { $$ = make_return_node($2); }
+    ;
+
+expr:
+      expr PLUS expr                    { $$ = make_binop_node('+', $1, $3); }
+    | expr MINUS expr                   { $$ = make_binop_node('-', $1, $3); }
+    | expr MUL expr                     { $$ = make_binop_node('*', $1, $3); }
+    | expr DIV expr                     { $$ = make_binop_node('/', $1, $3); }
+    | expr LT expr                      { $$ = make_binop_node('<', $1, $3); }
+    | IDENTIFIER INCR                   { $$ = make_unary_node("++", make_var_node($1)); }
+    | IDENTIFIER DECR                   { $$ = make_unary_node("--", make_var_node($1)); }
+    | NUMBER                            { $$ = make_int_node($1); }
+    | STRING                            { $$ = make_string_node($1); }
+    | IDENTIFIER                        { $$ = make_var_node($1); }
+    | IDENTIFIER LPAREN RPAREN          { $$ = make_func_call_node($1, NULL); }
+    | IDENTIFIER LPAREN expr_list RPAREN
+                                        { $$ = make_func_call_node($1, $3); }
+    ;
+
+expr_list:
+      expr                              { $$ = make_expr_list_node($1, NULL); }
+    | expr_list COMMA expr              { $$ = make_expr_list_node($3, $1); }
+    ;

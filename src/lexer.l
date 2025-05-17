@@ -1,46 +1,52 @@
 %{
-#include <stdio.h>
-#include <stdlib.h>
 #include "parser.tab.h"
-
-void yyerror(const char* s);
+#include <string.h>
+#include <stdlib.h>
 %}
 
-%%
-
-[ \t\n]+        ; /* Skip whitespace */
-"int"           { return INT; }
-"if"            { return IF; }
-"else"          { return ELSE; }
-"for"           { return FOR; }
-"return"        { return RETURN; }
-"+"             { return PLUS; }
-"-"             { return MINUS; }
-"*"             { return TIMES; }
-"/"             { return DIVIDE; }
-"="             { return ASSIGN; }
-"+="            { return PLUS_ASSIGN; }
-"-="            { return MINUS_ASSIGN; }
-"=="            { return EQ; }
-"!="            { return NEQ; }
-"<"             { return LT; }
-"<="            { return LE; }
-">"             { return GT; }
-">="            { return GE; }
-"("             { return LPAREN; }
-")"             { return RPAREN; }
-"{"             { return LBRACE; }
-"}"             { return RBRACE; }
-";"             { return SEMICOLON; }
-","             { return COMMA; }
-
-[0-9]+          { yylval.ival = atoi(yytext); return NUMBER; }
-[a-zA-Z_][a-zA-Z0-9_]* { yylval.sval = strdup(yytext); return IDENTIFIER; }
-
-.               { printf("Unexpected character: %s\n", yytext); }
+IDENTIFIER [a-zA-Z_][a-zA-Z0-9_]*
+NUMBER     [0-9]+
+STRING     \"[^\"]*\"
 
 %%
 
-int yywrap(void) {
+
+"int"       { return KW_INT; }
+"if"        { return KW_IF; }
+"for"       { return KW_FOR; }
+"return"    { return KW_RETURN; }
+
+
+"="         { return ASSIGN; }
+";"         { return SEMICOLON; }
+","         { return COMMA; }
+"("         { return LPAREN; }
+")"         { return RPAREN; }
+"{"         { return LBRACE; }
+"}"         { return RBRACE; }
+"+"         { return PLUS; }
+"-"         { return MINUS; }
+"*"         { return MUL; }
+"/"         { return DIV; }
+"<"         { return LT; }
+"++"        { return INCR; }
+"--"        { return DECR; }
+
+
+{IDENTIFIER} { yylval.str = strdup(yytext); return IDENTIFIER; }
+{NUMBER}     { yylval.ival = atoi(yytext); return NUMBER; }
+
+
+[ \t\r\n]+   {  }
+
+
+{STRING}     { yylval.str = strdup(yytext); return STRING; }
+
+
+.            { return yytext[0]; }
+
+%%
+
+int yywrap() {
     return 1;
 }
